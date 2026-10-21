@@ -1,6 +1,6 @@
 import { objectives } from './objectives.mjs';
 import { dayKey } from './tracker.mjs';
-import { schedule, scheduleDay, adjacentDay, resources, scheduledObjectives } from './schedule-data.mjs';
+import { schedule, scheduleDay, adjacentDay, resources, scheduledObjectives } from './schedule-data.mjs?v=20261020-schedule2';
 
 export function formatDay(date) {
   const [y, m, d] = date.split('-').map(Number);

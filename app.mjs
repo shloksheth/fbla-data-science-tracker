@@ -1,7 +1,7 @@
 import { LETTERS, normalizeSet, parseQuestions, grade, importExample, generationPrompt, starterSet } from './core.mjs';
 import { renderTracker, validateTracker, mergeTrackers, dayKey, showScheduledObjectives } from './tracker.mjs';
-import { renderSchedule, formatDay } from './schedule.mjs';
-import { scheduleDay, scheduledObjectives, validateSchedule, mergeSchedule } from './schedule-data.mjs';
+import { renderSchedule, formatDay } from './schedule.mjs?v=20261020-schedule2';
+import { scheduleDay, scheduledObjectives, validateSchedule, mergeSchedule } from './schedule-data.mjs?v=20261020-schedule2';
 
 const app = document.getElementById('app');
 const STORAGE = 'set-sprint-v1';
