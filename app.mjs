@@ -1,5 +1,7 @@
 import { LETTERS, normalizeSet, parseQuestions, grade, importExample, generationPrompt, starterSet } from './core.mjs';
-import { renderTracker, validateTracker, mergeTrackers } from './tracker.mjs';
+import { renderTracker, validateTracker, mergeTrackers, dayKey, showScheduledObjectives } from './tracker.mjs';
+import { renderSchedule, formatDay } from './schedule.mjs';
+import { scheduleDay, scheduledObjectives, validateSchedule, mergeSchedule } from './schedule-data.mjs';
 
 const app = document.getElementById('app');
 const STORAGE = 'set-sprint-v1';
@@ -17,6 +19,9 @@ try {
   storageBroken = true;
 }
 db.tracker = db.tracker || { records: {}, logs: [] };
+db.schedule = validateSchedule(db.schedule);
+let lastToday = dayKey();
+let scheduleDate = lastToday;
 let view = 'tracker';
 let selectedId = null;
 let draft = { title: '', topic: '', raw: '' };
@@ -95,10 +100,16 @@ function field(label, input, hint) {
 }
 function selectedSet() { return db.sets.find(set => set.id === selectedId); }
 function backup() {
-  exportJSON({ type: 'set-sprint-backup', version: 1, sets: db.sets, attempts: db.attempts, tracker: db.tracker }, 'data-science-backup.json');
+  exportJSON({ type: 'set-sprint-backup', version: 1, sets: db.sets, attempts: db.attempts, tracker: db.tracker, schedule: db.schedule }, 'data-science-backup.json');
 }
 function trackerPage() {
-  renderTracker({ app, el, button, tracker: db.tracker, save: persist, exportBackup: backup, openSets: () => go('library'), toast });
+  const daily = { date: scheduleDate, label: formatDay(scheduleDate), title: scheduleDay(scheduleDate)?.title || '', ids: scheduledObjectives(scheduleDate, db.schedule), open: () => go('schedule') };
+  renderTracker({ app, el, button, tracker: db.tracker, save: persist, exportBackup: backup, openSets: () => go('library'), toast, daily });
+}
+function schedulePage() {
+  renderSchedule({ app, el, button, date: scheduleDate, progress: db.schedule, save: persist,
+    chooseDate: value => { if (value) { scheduleDate = value; render(); } },
+    openTracker: () => { showScheduledObjectives(); go('tracker'); }, openSets: () => go('library') });
 }
 function library() {
   const questionCount = db.sets.reduce((sum, set) => sum + set.questions.length, 0);
@@ -347,11 +358,13 @@ function render() {
   app.replaceChildren();
   document.getElementById('library-nav').setAttribute('aria-current', view === 'library' ? 'page' : 'false');
   document.getElementById('tracker-nav').setAttribute('aria-current', view === 'tracker' ? 'page' : 'false');
-  ({ tracker: trackerPage, library, import: importPage, detail, quiz, results }[view] || trackerPage)();
+  document.getElementById('schedule-nav').setAttribute('aria-current', view === 'schedule' ? 'page' : 'false');
+  ({ tracker: trackerPage, schedule: schedulePage, library, import: importPage, detail, quiz, results }[view] || trackerPage)();
 }
 
 document.getElementById('brand').addEventListener('click', event => { event.preventDefault(); go('tracker'); });
 document.getElementById('tracker-nav').addEventListener('click', () => go('tracker'));
+document.getElementById('schedule-nav').addEventListener('click', () => go('schedule'));
 document.getElementById('library-nav').addEventListener('click', () => go('library'));
 document.getElementById('new-nav').addEventListener('click', () => openImport());
 document.getElementById('file-input').addEventListener('change', async event => {
@@ -366,6 +379,7 @@ document.getElementById('file-input').addEventListener('change', async event => 
     if (json?.type === 'set-sprint-backup') {
       if (!Array.isArray(json.sets)) throw new Error('This backup does not contain a sets array.');
       const incomingTracker = json.tracker ? validateTracker(json.tracker) : null;
+      const incomingSchedule = json.schedule ? validateSchedule(json.schedule) : null;
       const sets = json.sets.map(s => ({ ...normalizeSet(s), id: uid(), oldId: s.id, createdAt: s.createdAt || Date.now() }));
       const idMap = new Map(sets.map(s => [s.oldId, s.id]));
       const attempts = Array.isArray(json.attempts) ? json.attempts.map(a => {
@@ -378,6 +392,7 @@ document.getElementById('file-input').addEventListener('change', async event => 
         db.sets.unshift(...sets.map(({ oldId, ...s }) => s));
         db.attempts.push(...attempts);
         if (incomingTracker) db.tracker = mergeTrackers(db.tracker, incomingTracker);
+        if (incomingSchedule) db.schedule = mergeSchedule(db.schedule, incomingSchedule);
         const saved = persist(); go('library'); if (saved) toast('Backup imported.');
       });
     } else {
@@ -396,5 +411,15 @@ document.addEventListener('keydown', event => {
   }
 });
 setInterval(updateTimer, 1000);
+function refreshDay() {
+  const today = dayKey();
+  if (today === lastToday) return;
+  // Follow midnight only when the user was viewing today, not a browsed date.
+  if (scheduleDate === lastToday) scheduleDate = today;
+  lastToday = today;
+  if (view === 'schedule' || view === 'tracker') render();
+}
+setInterval(refreshDay, 60000);
+window.addEventListener('focus', refreshDay);
 if (!storageBroken) persist();
 render();

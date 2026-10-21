@@ -44,12 +44,15 @@ export function mergeTrackers(current, incoming) {
   return { records, logs: [...current.logs,...next.logs.filter(log => !seen.has(log.id))] };
 }
 let selected = null, unitFilter = '', filter = 'all', query = '';
-export function renderTracker({ app, el, button, tracker, save, exportBackup, openSets, toast }) {
+export function showScheduledObjectives() {
+  selected = null; unitFilter = ''; filter = 'scheduled'; query = '';
+}
+export function renderTracker({ app, el, button, tracker, save, exportBackup, openSets, toast, daily }) {
   const today = dayKey();
   const rowFor = id => tracker.records[id] || {status:'Not started', notes:''};
   const saveRecord = (id, changes) => { tracker.records[id] = {...rowFor(id),...changes,updatedAt:Date.now()}; save(); };
   const select = (values, value, change, label) => el('select', {'aria-label':label,onchange:change}, values.map(([key,text]) => el('option',{value:key,selected:key===value},text)));
-  const repaint = () => { app.replaceChildren(); renderTracker({ app, el, button, tracker, save, exportBackup, openSets, toast }); };
+  const repaint = () => { app.replaceChildren(); renderTracker({ app, el, button, tracker, save, exportBackup, openSets, toast, daily }); };
   if (selected) {
     const objective = objectives.find(o => o.id === selected);
     const summary = objectiveSummary(tracker, selected);
@@ -100,12 +103,15 @@ export function renderTracker({ app, el, button, tracker, save, exportBackup, op
   const due=objectives.filter(o=>{const d=objectiveSummary(tracker,o.id).due;return d&&d<=today;}).length;
   app.append(el('div',{class:'page-heading'},el('div',{},el('p',{class:'eyebrow'},'FBLA / DATA SCIENCE & AI'),el('h1',{},'Study tracker')),
     el('div',{class:'actions'},button('Question sets',openSets,'secondary'),button('Export backup',exportBackup,'secondary'))));
+  if (daily) app.append(el('div', {class:'scheduled-banner'},
+    el('div', {}, el('strong', {}, daily.label), el('p', {}, daily.title ? daily.title + (daily.ids.length ? ' · Scheduled objectives are highlighted below.' : ' · Choose a focus in Schedule for targeted review days.') : 'No tasks scheduled for this date. The plan runs October 21–November 17.')),
+    button('View schedule', daily.open, 'secondary small')));
   app.append(el('div',{class:'tracker-summary'},
     el('span',{},el('strong',{},logged+' / 44'),' objectives practiced'),
     el('span',{},el('strong',{},ready+' / 44'),' marked ready'),
     el('span',{},el('strong',{},due),' reviews due')));
   const unitSelect=select([['','All units'],...units.map((u,i)=>[String(i+1),(i+1)+'. '+u.name])],unitFilter,e=>{unitFilter=e.target.value;repaint();},'Filter by unit');
-  const statusSelect=select([['all','All objectives'],['due','Review due'],['unlogged','No practice logged'],...statuses.map(s=>[s,s])],filter,e=>{filter=e.target.value;repaint();},'Filter by status');
+  const statusSelect=select([['all','All objectives'],['scheduled','Scheduled day'],['due','Review due'],['unlogged','No practice logged'],...statuses.map(s=>[s,s])],filter,e=>{filter=e.target.value;repaint();},'Filter by status');
   const search=el('input',{type:'search',value:query,placeholder:'Search objectives', 'aria-label':'Search objectives'});
   search.addEventListener('input',e=>{query=e.target.value;updateRows();});
   app.append(el('div',{class:'tracker-filters'},unitSelect,statusSelect,search));
@@ -123,10 +129,12 @@ export function renderTracker({ app, el, button, tracker, save, exportBackup, op
       const record=rowFor(o.id),s=objectiveSummary(tracker,o.id);
       if(unitFilter&&o.unit!==Number(unitFilter))continue;
       if(query&&!((o.id+' '+o.name+' '+o.skills+' '+o.unitName).toLowerCase().includes(query.toLowerCase())))continue;
+      if(filter==='scheduled'&&!daily?.ids.includes(o.id))continue;
       if(filter==='due'&&!(s.due&&s.due<=today)||filter==='unlogged'&&s.logs.length||statuses.includes(filter)&&record.status!==filter)continue;
       count++;
-      tbody.append(el('tr',{class:s.due&&s.due<=today?'due-row':''},
-        el('th',{scope:'row'},el('span',{class:'objective-name'},o.id+' '+o.name),el('span',{class:'objective-unit'},'Unit '+o.unit+' · '+o.unitName)),
+      const scheduled = daily?.ids.includes(o.id);
+      tbody.append(el('tr',{class:[s.due&&s.due<=today?'due-row':'',scheduled?'scheduled-row':''].filter(Boolean).join(' ')},
+        el('th',{scope:'row'},el('span',{class:'objective-name'},o.id+' '+o.name),el('span',{class:'objective-unit'},'Unit '+o.unit+' · '+o.unitName),scheduled?el('span',{class:'scheduled-label'},'Scheduled · '+daily.date):null),
         el('td',{},el('span',{class:'status-text'},record.status)),
         el('td',{},s.accuracy===null?'—':s.accuracy+'% ('+s.correct+'/'+s.total+')'),
         el('td',{},s.last||'—'),el('td',{},s.due?((s.due<=today?'Due: ':'')+s.due):'—'),

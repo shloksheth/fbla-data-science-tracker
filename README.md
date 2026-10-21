@@ -2,6 +2,10 @@
 
 A static tracker for the event's 44 published objectives, with question-set import, practice, timed tests, review history, backups, and light/dark mode.
 
+The Schedule tab contains October 21–November 17, 2026, with at most three tasks per day, linked readings, time allowances, saved checkboxes and session notes. It opens on the browser's local date; arrows browse the plan. The selected day's objectives are highlighted in the tracker. Adaptive review days let you choose the objective from your actual results. Schedule progress is included in exported backups; completing tasks does not change objective readiness.
+
+Run checks with `node --test tests/*.test.mjs`.
+
 ## Run locally
 
 Run python -m http.server 4173 in this directory, then visit http://localhost:4173.
