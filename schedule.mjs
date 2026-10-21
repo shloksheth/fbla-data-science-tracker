@@ -27,7 +27,6 @@ export function renderSchedule({ app, el, button, date, progress, save, chooseDa
   const done = day.tasks.filter(t => progress.tasks[t.id]?.done).length;
   app.append(el('div', { class: 'schedule-heading' }, el('h2', {}, day.title),
     el('p', { class: 'meta' }, minutesLabel(totals) + ' total · ' + done + '/' + day.tasks.length + ' tasks checked')));
-  if (day.note) app.append(el('p', { class: 'notice' }, day.note));
   if (day.adaptive) {
     const select = el('select', { 'aria-label': 'Focus objective', onchange: event => {
       // Keep a timestamp even when cleared, so backup merges preserve the change.
@@ -51,10 +50,8 @@ export function renderSchedule({ app, el, button, date, progress, save, chooseDa
   app.append(el('div', { class: 'actions schedule-actions' },
     button('View highlighted objectives', openTracker, 'secondary', { disabled: !ids.length }),
     button('Question sets', openSets, 'quiet')));
-  const notes = el('textarea', { class: 'notes', value: progress.notes[date]?.text || '', placeholder: 'Unfinished examples, actual minutes, or what needs another session…', oninput: event => {
+  const notes = el('textarea', { class: 'notes', value: progress.notes[date]?.text || '', placeholder: 'Notes or unfinished work', oninput: event => {
     progress.notes[date] = { text: event.target.value.slice(0, 10000), updatedAt: Date.now() }; save();
   } });
-  app.append(el('label', { class: 'field schedule-notes' }, 'Session notes / carry-over', notes));
-  app.append(el('details', { class: 'schedule-guidance' }, el('summary', {}, 'How to use the time limits'),
-    el('p', {}, 'Stop at the upper time limit. If learning takes longer, reduce the question count and record the unfinished work here. Use the repair days for it. A checked task records completion; it does not mark an objective Ready. Flashcards support recall; examples and fresh questions check application.')));
+  app.append(el('label', { class: 'field schedule-notes' }, 'Notes', notes));
 }
