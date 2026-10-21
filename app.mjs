@@ -1,7 +1,7 @@
 import { LETTERS, normalizeSet, parseQuestions, grade, importExample, generationPrompt, starterSet } from './core.mjs';
 import { renderTracker, validateTracker, mergeTrackers, dayKey, showScheduledObjectives } from './tracker.mjs';
-import { renderSchedule, formatDay } from './schedule.mjs?v=20261020-schedule2';
-import { scheduleDay, scheduledObjectives, validateSchedule, mergeSchedule } from './schedule-data.mjs?v=20261020-schedule2';
+import { renderSchedule, formatDay } from './schedule.mjs?v=20261020-plan3';
+import { scheduleDay, scheduledObjectives, validateSchedule, mergeSchedule } from './schedule-data.mjs?v=20261020-plan3';
 
 const app = document.getElementById('app');
 const STORAGE = 'set-sprint-v1';
@@ -82,9 +82,9 @@ function exportJSON(value, filename) {
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-async function copy(text, message) {
+async function copy(text, message, fallback = 'Clipboard unavailable. Select and copy the text in the prompt box.') {
   try { await navigator.clipboard.writeText(text); toast(message); }
-  catch { toast('Clipboard unavailable. Select and copy the text in the prompt box.'); }
+  catch { toast(fallback); }
 }
 function confirmAction(title, text, action, callback) {
   const dialog = document.getElementById('confirm-dialog');
@@ -109,7 +109,8 @@ function trackerPage() {
 function schedulePage() {
   renderSchedule({ app, el, button, date: scheduleDate, progress: db.schedule, save: persist,
     chooseDate: value => { if (value) { scheduleDate = value; render(); } },
-    openTracker: () => { showScheduledObjectives(); go('tracker'); }, openSets: () => go('library') });
+    openTracker: () => { showScheduledObjectives(); go('tracker'); }, openSets: () => go('library'),
+    copyRequest: request => copy(request, 'Question request copied. Paste it into chat to generate your set.', 'Open View question request and copy the text.') });
 }
 function library() {
   const questionCount = db.sets.reduce((sum, set) => sum + set.questions.length, 0);
